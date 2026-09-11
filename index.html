@@ -359,6 +359,37 @@
       }
     }
 
+
+    /* --- Mobile bottom-nav separators --- */
+    @media(max-width:700px){
+      .nav{gap:0!important}
+      .nav button{
+        position:relative;
+        border-radius:0;
+      }
+      .nav button:not(:first-child)::before{
+        content:"";
+        position:absolute;
+        left:0;
+        top:11px;
+        bottom:11px;
+        width:1px;
+        background:var(--border-strong);
+      }
+      .nav button.active{
+        background:var(--accent-soft);
+        border-radius:8px;
+      }
+    }
+
+
+    .trip-date{font-size:12px;color:var(--text);font-weight:550;margin-top:3px}
+    .past-trips-title{margin-top:30px}
+    @media(max-width:700px){
+      .trip-date{font-size:13px;margin-top:4px}
+      .past-trips-title{margin-top:28px}
+    }
+
 </style>
 </head>
 <body>
@@ -383,8 +414,11 @@
         <button class="btn primary" onclick="navigate('newtrip')"><span class="nav-icon">＋</span><span class="nav-label">Nova viagem</span></button>
       </div>
       <div id="tripStats" class="grid grid-4"></div>
-      <div class="section-title"><h2>Viagens guardadas</h2></div>
-      <div id="tripList" class="grid grid-3"></div>
+      <div class="section-title"><h2>Próximas viagens</h2><span class="pill" id="upcomingTripCount">0</span></div>
+      <div id="upcomingTripList" class="grid grid-3"></div>
+
+      <div class="section-title past-trips-title"><h2>Viagens passadas</h2><span class="pill" id="pastTripCount">0</span></div>
+      <div id="pastTripList" class="grid grid-3"></div>
     </section>
 
     <section class="page" id="page-newtrip">
@@ -396,7 +430,9 @@
           <div class="grid grid-3">
             <div class="field"><label>Nome da viagem</label><input id="tripName" placeholder="Ex.: Praga — Outubro" required></div>
             <div class="field"><label>Destino</label><input id="destination" placeholder="Ex.: Praga"></div>
-            <div class="field"><label>Duração (dias)</label><input id="days" type="number" min="1" value="3" required></div>
+            <div class="field"><label>Data de início</label><input id="startDate" type="date"></div>
+            <div class="field"><label>Data de fim</label><input id="endDate" type="date"></div>
+            <div class="field"><label>Duração (dias)</label><input id="days" type="number" min="1" value="3" required><div class="weather-note">Calculada automaticamente quando defines as duas datas.</div></div>
 
             <div class="field"><label>Finalidade</label>
               <select id="purpose">
@@ -722,13 +758,14 @@ document.getElementById("tripForm").addEventListener("submit",e=>{
   e.preventDefault();
 
   const data={
-    name:tripName.value.trim(),destination:destination.value.trim(),days:Number(days.value),
-    purpose:purpose.value,transport:transport.value,lodging:lodging.value,bag:bag.value,
-    tempMin:Number(tempMin.value),tempMax:Number(tempMax.value),rain:rain.value,wind:wind.value,snow:snow.value,
-    notes:tripNotes.value.trim()
+    name:$("tripName").value.trim(),destination:$("destination").value.trim(),
+    startDate:$("startDate").value||"",endDate:$("endDate").value||"",days:Number($("days").value),
+    purpose:$("purpose").value,transport:$("transport").value,lodging:$("lodging").value,bag:$("bag").value,
+    tempMin:Number($("tempMin").value),tempMax:Number($("tempMax").value),rain:$("rain").value,wind:$("wind").value,snow:$("snow").value,
+    notes:$("tripNotes").value.trim()
   };
 
-  const editId=editingTripId.value;
+  const editId=$("editingTripId").value;
 
   if(editId){
     const t=db.trips.find(x=>x.id===editId);
@@ -764,12 +801,15 @@ document.getElementById("tripForm").addEventListener("submit",e=>{
 });
 
 function resetTripForm(){
-  document.getElementById("tripForm").reset();
-  editingTripId.value="";
-  days.value=3;
-  tempMin.value=12;
-  tempMax.value=20;
-  tripSubmitBtn.textContent="Gerar checklist";
+  $("tripForm").reset();
+  $("editingTripId").value="";
+  $("startDate").value="";
+  $("endDate").value="";
+  $("endDate").min="";
+  $("days").value=3;
+  $("tempMin").value=12;
+  $("tempMax").value=20;
+  $("tripSubmitBtn").textContent="Gerar checklist";
 }
 
 
@@ -777,24 +817,93 @@ function editTrip(id){
   const t=db.trips.find(x=>x.id===id);
   if(!t)return;
 
-  editingTripId.value=t.id;
-  tripName.value=t.name||"";
-  destination.value=t.destination||"";
-  days.value=t.days||1;
-  purpose.value=t.purpose||"lazer";
-  transport.value=t.transport||"aviao";
-  lodging.value=t.lodging||"hotel";
-  bag.value=t.bag||"cabine";
-  tempMin.value=t.tempMin ?? 12;
-  tempMax.value=t.tempMax ?? 20;
-  rain.value=t.rain||"nao";
-  wind.value=t.wind||"nao";
-  snow.value=t.snow||"nao";
-  tripNotes.value=t.notes||"";
+  $("editingTripId").value=t.id;
+  $("tripName").value=t.name||"";
+  $("destination").value=t.destination||"";
+  $("startDate").value=t.startDate||"";
+  $("endDate").value=t.endDate||"";
+  $("endDate").min=t.startDate||"";
+  $("days").value=t.days||1;
+  $("purpose").value=t.purpose||"lazer";
+  $("transport").value=t.transport||"aviao";
+  $("lodging").value=t.lodging||"hotel";
+  $("bag").value=t.bag||"cabine";
+  $("tempMin").value=t.tempMin ?? 12;
+  $("tempMax").value=t.tempMax ?? 20;
+  $("rain").value=t.rain||"nao";
+  $("wind").value=t.wind||"nao";
+  $("snow").value=t.snow||"nao";
+  $("tripNotes").value=t.notes||"";
 
-  tripSubmitBtn.textContent="Guardar alterações";
+  $("tripSubmitBtn").textContent="Guardar alterações";
   navigate("newtrip");
   window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function parseLocalDate(value){
+  if(!value)return null;
+  const [y,m,d]=value.split("-").map(Number);
+  if(!y||!m||!d)return null;
+  return new Date(y,m-1,d,0,0,0,0);
+}
+
+function todayLocal(){
+  const d=new Date();
+  return new Date(d.getFullYear(),d.getMonth(),d.getDate());
+}
+
+function syncTripDurationFromDates(){
+  const start=$("startDate");
+  const end=$("endDate");
+  const duration=$("days");
+  if(!start||!end||!duration)return;
+  end.min=start.value||"";
+  const s=parseLocalDate(start.value);
+  const e=parseLocalDate(end.value);
+  if(s&&e&&e>=s){
+    duration.value=Math.round((e-s)/86400000)+1;
+  }
+}
+
+function effectiveTripEndDate(t){
+  if(t.endDate)return parseLocalDate(t.endDate);
+  if(t.startDate){
+    const s=parseLocalDate(t.startDate);
+    if(s){
+      const e=new Date(s);
+      e.setDate(e.getDate()+Math.max(1,Number(t.days)||1)-1);
+      return e;
+    }
+  }
+  return null;
+}
+
+function isPastTrip(t){
+  const end=effectiveTripEndDate(t);
+  return end ? end < todayLocal() : false;
+}
+
+function formatTripDate(value){
+  const d=parseLocalDate(value);
+  if(!d)return "";
+  return new Intl.DateTimeFormat("pt-PT",{day:"2-digit",month:"short",year:"numeric"}).format(d);
+}
+
+function tripDateLabel(t){
+  const start=t.startDate?formatTripDate(t.startDate):"";
+  const end=t.endDate?formatTripDate(t.endDate):"";
+  if(start&&end){
+    if(t.startDate===t.endDate)return start;
+    return `${start} – ${end}`;
+  }
+  if(start)return `A partir de ${start}`;
+  if(end)return `Até ${end}`;
+  return "Datas por definir";
+}
+
+function tripSortDate(t,preferEnd=false){
+  const d=preferEnd ? effectiveTripEndDate(t) : (parseLocalDate(t.startDate)||effectiveTripEndDate(t));
+  return d ? d.getTime() : Number.POSITIVE_INFINITY;
 }
 
 function findConfiguredRuleForTripItem(i){
@@ -828,27 +937,45 @@ function recalculateTripQuantities(t){
   });
 }
 
+function tripCardHtml(t){
+  const done=t.items.filter(i=>i.checked).length;
+  const pct=t.items.length?Math.round(done/t.items.length*100):0;
+  return `<div class="card trip-card">
+    <div>
+      <div class="trip-title">${esc(t.name)}</div>
+      <div class="muted">${esc(t.destination||"Sem destino")}</div>
+      <div class="trip-date">${esc(tripDateLabel(t))} · ${t.days} dia(s)</div>
+    </div>
+    <div class="trip-meta"><span class="pill">${labelFor("purpose",t.purpose)}</span><span class="pill">${labelFor("transport",t.transport)}</span><span class="pill">${labelFor("bag",t.bag)}</span></div>
+    <div><div class="inline"><span class="muted">${done}/${t.items.length} itens</span><span class="right muted">${pct}%</span></div><div class="progress"><div style="width:${pct}%"></div></div></div>
+    <div class="actions"><button class="btn small primary" onclick="openTrip('${t.id}')">Abrir</button><button class="btn small" onclick="editTrip('${t.id}')">Editar</button><button class="btn small" onclick="duplicateTrip('${t.id}')">Duplicar</button><button class="btn small danger" onclick="deleteTrip('${t.id}')">Eliminar</button></div>
+  </div>`;
+}
+
 function renderTrips(){
-  const list=document.getElementById("tripList");
-  const stats=document.getElementById("tripStats");
+  const upcomingList=$("upcomingTripList");
+  const pastList=$("pastTripList");
+  const stats=$("tripStats");
+
+  const upcoming=db.trips.filter(t=>!isPastTrip(t)).sort((a,b)=>tripSortDate(a)-tripSortDate(b));
+  const past=db.trips.filter(isPastTrip).sort((a,b)=>tripSortDate(b,true)-tripSortDate(a,true));
   const total=db.trips.length;
-  const open=db.trips.filter(t=>t.items.some(i=>!i.checked)).length;
   const packed=db.trips.reduce((a,t)=>a+t.items.filter(i=>i.checked).length,0);
-  const items=db.trips.reduce((a,t)=>a+t.items.length,0);
+
   stats.innerHTML=[
-    ["Viagens",total],["Em preparação",open],["Itens concluídos",packed],["Itens totais",items]
+    ["Viagens",total],["Próximas",upcoming.length],["Passadas",past.length],["Itens concluídos",packed]
   ].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="stat">${x[1]}</div></div>`).join("");
 
-  if(!db.trips.length){list.innerHTML=`<div class="empty" style="grid-column:1/-1">Ainda não tens viagens. Cria a primeira para gerar a checklist automaticamente.</div>`;return}
-  list.innerHTML=db.trips.map(t=>{
-    const done=t.items.filter(i=>i.checked).length,pct=t.items.length?Math.round(done/t.items.length*100):0;
-    return `<div class="card trip-card">
-      <div><div class="trip-title">${esc(t.name)}</div><div class="muted">${esc(t.destination||"Sem destino")} · ${t.days} dia(s)</div></div>
-      <div class="trip-meta"><span class="pill">${labelFor("purpose",t.purpose)}</span><span class="pill">${labelFor("transport",t.transport)}</span><span class="pill">${labelFor("bag",t.bag)}</span></div>
-      <div><div class="inline"><span class="muted">${done}/${t.items.length} itens</span><span class="right muted">${pct}%</span></div><div class="progress"><div style="width:${pct}%"></div></div></div>
-      <div class="actions"><button class="btn small primary" onclick="openTrip('${t.id}')">Abrir</button><button class="btn small" onclick="editTrip('${t.id}')">Editar</button><button class="btn small" onclick="duplicateTrip('${t.id}')">Duplicar</button><button class="btn small danger" onclick="deleteTrip('${t.id}')">Eliminar</button></div>
-    </div>`
-  }).join("");
+  $("upcomingTripCount").textContent=upcoming.length;
+  $("pastTripCount").textContent=past.length;
+
+  upcomingList.innerHTML=upcoming.length
+    ? upcoming.map(tripCardHtml).join("")
+    : `<div class="empty" style="grid-column:1/-1">Não tens próximas viagens planeadas.</div>`;
+
+  pastList.innerHTML=past.length
+    ? past.map(tripCardHtml).join("")
+    : `<div class="empty" style="grid-column:1/-1">Ainda não tens viagens passadas com datas definidas.</div>`;
 }
 
 function labelFor(type,v){
@@ -909,7 +1036,7 @@ function renderTripDetail(t){
   const learned=learnedSuggestions(t).filter(s=>!t.items.some(i=>i.name.toLowerCase()===s.name.toLowerCase()));
   document.getElementById("tripDetail").innerHTML=`
     <div class="topbar">
-      <div><button class="btn ghost" onclick="navigate('trips')">← Viagens</button><div class="kicker">Checklist</div><h1>${esc(t.name)}</h1><div class="muted">${esc(t.destination||"Sem destino")} · ${t.days} dia(s)</div></div>
+      <div><button class="btn ghost" onclick="navigate('trips')">← Viagens</button><div class="kicker">Checklist</div><h1>${esc(t.name)}</h1><div class="muted">${esc(t.destination||"Sem destino")} · ${esc(tripDateLabel(t))} · ${t.days} dia(s)</div></div>
       <div class="actions"><button class="btn" onclick="editTrip('${t.id}')">Editar</button><button class="btn" onclick="duplicateTrip('${t.id}')">Duplicar</button><button class="btn danger" onclick="deleteTrip('${t.id}')">Eliminar</button></div>
     </div>
     <div class="grid grid-4">
@@ -1347,6 +1474,8 @@ function factoryReset(){if(!confirm("Isto irá apagar todas as viagens e configu
 
 load();
 refreshCategorySelects();
+$("startDate")?.addEventListener("change",syncTripDurationFromDates);
+$("endDate")?.addEventListener("change",syncTripDurationFromDates);
 $("baseItemBaseQty")?.addEventListener("input",updateQtyExample);
 $("baseItemQtyRule")?.addEventListener("change",updateQtyExample);
 updateQtyExample();
