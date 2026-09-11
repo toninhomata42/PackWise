@@ -25,7 +25,7 @@
       --radius:10px;
       --radius-sm:7px;
       --radius-lg:14px;
-      --nav-h:56px;
+      --nav-h:68px;
     }
 
     *{box-sizing:border-box}
@@ -156,7 +156,7 @@
     .tagline{border-left:3px solid var(--border-strong);padding:8px 10px;background:var(--panel-2);border-radius:6px;font-size:12px}
 
     .modal-backdrop{
-      position:fixed;inset:0;background:rgba(15,15,15,.32);display:none;align-items:center;justify-content:center;z-index:50;
+      position:fixed;inset:0;background:rgba(15,15,15,.32);display:none;align-items:center;justify-content:center;z-index:250;
       padding:16px;
     }
     .modal-backdrop.open{display:flex}
@@ -303,6 +303,62 @@
       #page-items .table td.actions{display:flex;padding-top:6px}
       .item-filters{padding:10px}
     }
+
+    /* --- iPhone interaction fixes --- */
+    @media(max-width:700px){
+      body{
+        padding-bottom:calc(var(--nav-h) + 28px + env(safe-area-inset-bottom));
+      }
+      main{
+        padding-bottom:calc(var(--nav-h) + 40px + env(safe-area-inset-bottom));
+      }
+      .sidebar{
+        z-index:100;
+        height:calc(var(--nav-h) + env(safe-area-inset-bottom));
+      }
+      .nav .nav-icon{display:none!important}
+      .nav .nav-label{
+        display:block;
+        font-size:12px;
+        line-height:1.15;
+        font-weight:650;
+      }
+      .nav button{
+        min-height:56px;
+        padding:8px 3px;
+        gap:0;
+      }
+      .modal-backdrop{
+        z-index:250;
+        padding:0;
+      }
+      .modal{
+        position:relative;
+        z-index:251;
+        max-height:calc(100dvh - 14px);
+        padding-bottom:calc(28px + env(safe-area-inset-bottom));
+        overscroll-behavior:contain;
+      }
+      .modal form{
+        padding-bottom:12px;
+      }
+      .modal form > .actions:last-child{
+        position:sticky;
+        bottom:calc(-28px - env(safe-area-inset-bottom));
+        z-index:5;
+        margin-left:-14px;
+        margin-right:-14px;
+        padding:12px 14px calc(16px + env(safe-area-inset-bottom));
+        background:rgba(255,255,255,.97);
+        border-top:1px solid var(--border);
+        backdrop-filter:blur(12px);
+        -webkit-backdrop-filter:blur(12px);
+      }
+      .modal form > .actions:last-child .btn{
+        min-height:44px;
+      }
+    }
+
 </style>
 </head>
 <body>
@@ -505,6 +561,7 @@
 </div>
 
 <script>
+const $ = id => document.getElementById(id);
 const DEFAULT_CATEGORIES=["Roupa","Calçado","Higiene","Tecnologia","Documentos","Saúde","Trabalho","Viagem","Outros"];
 const DBKEY="packwise-db-v2";
 function categories(){ return db?.categories?.length ? db.categories : DEFAULT_CATEGORIES; }
@@ -906,9 +963,14 @@ function renderPresets(){
 }
 
 function openPresetModal(){
-  presetForm.reset();presetId.value="";presetItems.innerHTML="";presetModalTitle.textContent="Novo preset";addPresetItemRow();document.getElementById("presetModal").classList.add("open")
+  $("presetForm").reset();
+  $("presetId").value="";
+  $("presetItems").innerHTML="";
+  $("presetModalTitle").textContent="Novo preset";
+  addPresetItemRow();
+  $("presetModal").classList.add("open");
 }
-function closeModal(id){document.getElementById(id).classList.remove("open")}
+function closeModal(id){const el=$(id);if(el)el.classList.remove("open")}
 function addPresetItemRow(data={}){
   const row=document.createElement("div");row.className="preset-item";
   row.innerHTML=`<div class="field"><label>Item</label><input class="pi-name" value="${esc(data.name||"")}" required></div>
@@ -917,7 +979,7 @@ function addPresetItemRow(data={}){
   <div class="field"><label>Quantidade por duração</label><select class="pi-rule">
     ${[["fixed","Sempre igual"],["perDay","Por cada dia"],["per2Days","Por cada 2 dias"],["per3Days","Por cada 3 dias"],["daysPlusOne","Dias + base"]].map(([v,l])=>`<option value="${v}" ${data.qtyRule===v?"selected":""}>${l}</option>`).join("")}
   </select></div><button type="button" class="btn small danger" onclick="this.parentElement.remove()">Remover</button>`;
-  presetItems.appendChild(row);
+  $("presetItems").appendChild(row);
 }
 document.getElementById("presetForm").addEventListener("submit",e=>{
   e.preventDefault();
@@ -925,14 +987,32 @@ document.getElementById("presetForm").addEventListener("submit",e=>{
     id:uid(),name:r.querySelector(".pi-name").value.trim(),category:r.querySelector(".pi-cat").value,
     baseQty:Number(r.querySelector(".pi-base").value)||1,qtyRule:r.querySelector(".pi-rule").value
   })).filter(i=>i.name);
-  const p={id:presetId.value||uid(),name:presetName.value.trim(),match:{purpose:ppurpose.value,transport:ptransport.value,lodging:plodging.value,bag:pbag.value},items};
+  const p={
+    id:$("presetId").value||uid(),
+    name:$("presetName").value.trim(),
+    match:{
+      purpose:$("ppurpose").value,
+      transport:$("ptransport").value,
+      lodging:$("plodging").value,
+      bag:$("pbag").value
+    },
+    items
+  };
   const ix=db.presets.findIndex(x=>x.id===p.id);if(ix>=0)db.presets[ix]=p;else db.presets.push(p);
   save();closeModal("presetModal");renderPresets();
 });
 function editPreset(id){
   const p=db.presets.find(x=>x.id===id);if(!p)return;
-  presetId.value=p.id;presetName.value=p.name;ppurpose.value=p.match.purpose;ptransport.value=p.match.transport;plodging.value=p.match.lodging;pbag.value=p.match.bag;
-  presetItems.innerHTML="";p.items.forEach(addPresetItemRow);presetModalTitle.textContent="Editar preset";presetModal.classList.add("open");
+  $("presetId").value=p.id;
+  $("presetName").value=p.name;
+  $("ppurpose").value=p.match.purpose;
+  $("ptransport").value=p.match.transport;
+  $("plodging").value=p.match.lodging;
+  $("pbag").value=p.match.bag;
+  $("presetItems").innerHTML="";
+  p.items.forEach(addPresetItemRow);
+  $("presetModalTitle").textContent="Editar preset";
+  $("presetModal").classList.add("open");
 }
 function deletePreset(id){if(!confirm("Eliminar este preset?"))return;db.presets=db.presets.filter(p=>p.id!==id);save();renderPresets()}
 
@@ -1041,14 +1121,16 @@ function ruleLabel(r){return {
   daysPlusOne:"Dias + quantidade base"
 }[r]||r}
 function openBaseItemModal(){
-  baseItemForm.reset();
-  baseItemId.value="";
-  baseItemContext.value="base";
-  baseItemParentId.value="";
-  baseItemTitle.textContent="Novo item";
+  const form=$("baseItemForm");
+  if(!form) return;
+  form.reset();
+  $("baseItemId").value="";
+  $("baseItemContext").value="base";
+  $("baseItemParentId").value="";
+  $("baseItemTitle").textContent="Novo item";
   refreshCategorySelects();
-  baseItemQtyExample.style.display="";
-  baseItemModal.classList.add("open");
+  $("baseQtyExample").style.display="";
+  $("baseItemModal").classList.add("open");
   updateQtyExample();
 }
 
@@ -1077,29 +1159,29 @@ function editCatalogItem(context,id,parentId=""){
   if(!i)return;
 
   refreshCategorySelects();
-  baseItemId.value=id;
-  baseItemContext.value=context;
-  baseItemParentId.value=parentId||"";
-  baseItemName.value=i.name;
-  baseItemCategory.value=i.category;
-  baseItemBaseQty.value=i.baseQty||1;
-  baseItemQtyRule.value=i.qtyRule||"fixed";
-  baseItemTitle.textContent="Editar item";
-  baseItemModal.classList.add("open");
+  $("baseItemId").value=id;
+  $("baseItemContext").value=context;
+  $("baseItemParentId").value=parentId||"";
+  $("baseItemName").value=i.name;
+  $("baseItemCategory").value=i.category;
+  $("baseItemBaseQty").value=i.baseQty||1;
+  $("baseItemQtyRule").value=i.qtyRule||"fixed";
+  $("baseItemTitle").textContent="Editar item";
+  $("baseItemModal").classList.add("open");
   updateQtyExample();
 }
 
 document.getElementById("baseItemForm").addEventListener("submit",e=>{
   e.preventDefault();
 
-  const context=baseItemContext.value||"base";
-  const oldId=baseItemId.value;
-  const parentId=baseItemParentId.value;
+  const context=$("baseItemContext").value||"base";
+  const oldId=$("baseItemId").value;
+  const parentId=$("baseItemParentId").value;
   const updated={
-    name:baseItemName.value.trim(),
-    category:baseItemCategory.value,
-    baseQty:Number(baseItemBaseQty.value)||1,
-    qtyRule:baseItemQtyRule.value
+    name:$("baseItemName").value.trim(),
+    category:$("baseItemCategory").value,
+    baseQty:Number($("baseItemBaseQty").value)||1,
+    qtyRule:$("baseItemQtyRule").value
   };
 
   if(!updated.name)return;
@@ -1226,8 +1308,8 @@ function deleteCategory(index){
   save();renderCategories();refreshCategorySelects();
 }
 function refreshCategorySelects(){
-  if(document.getElementById("baseItemCategory"))
-    baseItemCategory.innerHTML=categories().map(c=>`<option>${c}</option>`).join("");
+  const baseCat=$("baseItemCategory");
+  if(baseCat) baseCat.innerHTML=categories().map(c=>`<option>${c}</option>`).join("");
   const f=document.getElementById("itemFilterCategory");
   if(f){
     const old=f.value;
@@ -1265,8 +1347,8 @@ function factoryReset(){if(!confirm("Isto irá apagar todas as viagens e configu
 
 load();
 refreshCategorySelects();
-document.getElementById("baseItemBaseQty")?.addEventListener("input",updateQtyExample);
-document.getElementById("baseItemQtyRule")?.addEventListener("change",updateQtyExample);
+$("baseItemBaseQty")?.addEventListener("input",updateQtyExample);
+$("baseItemQtyRule")?.addEventListener("change",updateQtyExample);
 updateQtyExample();
 renderTrips();
 </script>
