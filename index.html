@@ -567,6 +567,21 @@
       .sidebar{padding-left:5px;padding-right:5px}
     }
 
+
+    @media(max-width:700px){
+      .nav .nav-icon{display:none}
+      .nav .nav-label{
+        display:block;
+        font-size:13px;
+        line-height:1.15;
+        font-weight:700;
+      }
+      .nav button{
+        min-height:68px;
+        padding:8px 4px;
+      }
+    }
+
 </style>
 </head>
 <body>
@@ -574,12 +589,12 @@
   <aside class="sidebar">
     <div class="brand"><div class="brand-badge">P</div><div>Packwise</div></div>
     <div class="nav">
-      <button class="active" data-page="trips">🧳 Viagens</button>
-      <button data-page="newtrip">＋ Nova viagem</button>
-      <button data-page="presets">⚙️ Presets</button>
-      <button data-page="items">☑️ Itens</button>
-      <button data-page="categories">🏷️ Categorias</button>
-      <button data-page="settings">⋯ Definições</button>
+      <button class="active" data-page="trips"><span class="nav-icon">🧳</span><span class="nav-label">Viagens</span></button>
+      <button data-page="newtrip"><span class="nav-icon">＋</span><span class="nav-label">Nova viagem</span></button>
+      <button data-page="presets"><span class="nav-icon">⚙️</span><span class="nav-label">Presets</span></button>
+      <button data-page="items"><span class="nav-icon">☑️</span><span class="nav-label">Itens</span></button>
+      <button data-page="categories"><span class="nav-icon">🏷️</span><span class="nav-label">Categorias</span></button>
+      <button data-page="settings"><span class="nav-icon">⋯</span><span class="nav-label">Definições</span></button>
     </div>
     <div class="sidebar-foot">Os dados ficam guardados apenas neste browser.</div>
   </aside>
@@ -588,7 +603,7 @@
     <section class="page active" id="page-trips">
       <div class="topbar">
         <div><div class="kicker">Planeamento</div><h1>As tuas viagens</h1><div class="muted">Cria, duplica e acompanha as checklists das tuas viagens.</div></div>
-        <button class="btn primary" onclick="navigate('newtrip')">＋ Nova viagem</button>
+        <button class="btn primary" onclick="navigate('newtrip')"><span class="nav-icon">＋</span><span class="nav-label">Nova viagem</span></button>
       </div>
       <div id="tripStats" class="grid grid-4"></div>
       <div class="section-title"><h2>Viagens guardadas</h2></div>
@@ -599,7 +614,7 @@
       <div class="topbar">
         <div><div class="kicker">Criar</div><h1>Nova viagem</h1><div class="muted">Define o contexto e deixa a app montar uma checklist inicial.</div></div>
       </div>
-      <form id="tripForm">
+      <form id="tripForm"><input type="hidden" id="editingTripId">
         <div class="card">
           <div class="grid grid-3">
             <div class="field"><label>Nome da viagem</label><input id="tripName" placeholder="Ex.: Praga — Outubro" required></div>
@@ -636,7 +651,7 @@
         <div class="card"><textarea id="tripNotes" placeholder="Ex.: jantar formal na sexta-feira; vou trabalhar 2 dias no escritório..."></textarea></div>
 
         <div class="actions" style="margin-top:18px">
-          <button type="submit" class="btn primary">Gerar checklist</button>
+          <button type="submit" class="btn primary" id="tripSubmitBtn">Gerar checklist</button>
           <button type="button" class="btn" onclick="resetTripForm()">Limpar</button>
         </div>
       </form>
@@ -908,10 +923,17 @@ function generateChecklist(t){
   for(const i of raw){
     const key=(i.name+"|"+i.category).toLowerCase();
     const q=qtyFor(i.qtyRule||"fixed",i.baseQty||1,t.days);
-    if(!merged.has(key)) merged.set(key,{id:uid(),name:i.name,category:i.category,qty:q,checked:false,source:i.source||"Base"});
+    if(!merged.has(key)) merged.set(key,{
+      id:uid(),name:i.name,category:i.category,qty:q,checked:false,source:i.source||"Base",
+      baseQty:Number(i.baseQty)||1,qtyRule:i.qtyRule||"fixed"
+    });
     else{
       const ex=merged.get(key);
-      ex.qty=Math.max(ex.qty,q);
+      if(q>ex.qty){
+        ex.qty=q;
+        ex.baseQty=Number(i.baseQty)||1;
+        ex.qtyRule=i.qtyRule||"fixed";
+      }
       if(!ex.source.includes(i.source||"")) ex.source+=" + "+(i.source||"");
     }
   }
@@ -920,17 +942,113 @@ function generateChecklist(t){
 
 document.getElementById("tripForm").addEventListener("submit",e=>{
   e.preventDefault();
-  const t={
-    id:uid(),name:tripName.value.trim(),destination:destination.value.trim(),days:Number(days.value),
+
+  const data={
+    name:tripName.value.trim(),destination:destination.value.trim(),days:Number(days.value),
     purpose:purpose.value,transport:transport.value,lodging:lodging.value,bag:bag.value,
     tempMin:Number(tempMin.value),tempMax:Number(tempMax.value),rain:rain.value,wind:wind.value,snow:snow.value,
-    notes:tripNotes.value.trim(),createdAt:new Date().toISOString()
+    notes:tripNotes.value.trim()
+  };
+
+  const editId=editingTripId.value;
+
+  if(editId){
+    const t=db.trips.find(x=>x.id===editId);
+    if(!t)return;
+
+    const oldDays=t.days;
+    Object.assign(t,data);
+
+    const recalc=confirm(
+      `Queres recalcular automaticamente as quantidades dos itens para ${t.days} dia(s)?
+
+`+
+      `Sim: atualiza as quantidades segundo as regras configuradas.
+`+
+      `Não: mantém as quantidades atuais.`
+    );
+
+    if(recalc){
+      recalculateTripQuantities(t);
+    }
+
+    save();
+    resetTripForm();
+    openTrip(t.id);
+    return;
+  }
+
+  const t={
+    id:uid(),...data,createdAt:new Date().toISOString()
   };
   t.items=generateChecklist(t);
   db.trips.unshift(t);save();openTrip(t.id);resetTripForm();
 });
 
-function resetTripForm(){document.getElementById("tripForm").reset();days.value=3;tempMin.value=12;tempMax.value=20;}
+function resetTripForm(){
+  document.getElementById("tripForm").reset();
+  editingTripId.value="";
+  days.value=3;
+  tempMin.value=12;
+  tempMax.value=20;
+  tripSubmitBtn.textContent="Gerar checklist";
+}
+
+
+function editTrip(id){
+  const t=db.trips.find(x=>x.id===id);
+  if(!t)return;
+
+  editingTripId.value=t.id;
+  tripName.value=t.name||"";
+  destination.value=t.destination||"";
+  days.value=t.days||1;
+  purpose.value=t.purpose||"lazer";
+  transport.value=t.transport||"aviao";
+  lodging.value=t.lodging||"hotel";
+  bag.value=t.bag||"cabine";
+  tempMin.value=t.tempMin ?? 12;
+  tempMax.value=t.tempMax ?? 20;
+  rain.value=t.rain||"nao";
+  wind.value=t.wind||"nao";
+  snow.value=t.snow||"nao";
+  tripNotes.value=t.notes||"";
+
+  tripSubmitBtn.textContent="Guardar alterações";
+  navigate("newtrip");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function findConfiguredRuleForTripItem(i){
+  // Prefer metadata already stored on the trip item.
+  if(i.qtyRule) return {qtyRule:i.qtyRule,baseQty:Number(i.baseQty)||1};
+
+  // Base catalogue.
+  let match=db.baseItems.find(x=>x.name===i.name && x.category===i.category);
+  if(match) return {qtyRule:match.qtyRule||"fixed",baseQty:Number(match.baseQty)||1};
+
+  // Presets.
+  for(const p of db.presets){
+    match=p.items.find(x=>x.name===i.name && x.category===i.category);
+    if(match) return {qtyRule:match.qtyRule||"fixed",baseQty:Number(match.baseQty)||1};
+  }
+
+  // Weather catalogue.
+  match=(db.weatherCatalog||[]).find(x=>x.name===i.name && x.category===i.category);
+  if(match) return {qtyRule:match.qtyRule||"fixed",baseQty:Number(match.baseQty)||1};
+
+  // Manually added / legacy items remain fixed at their current quantity.
+  return {qtyRule:"fixed",baseQty:Number(i.qty)||1};
+}
+
+function recalculateTripQuantities(t){
+  t.items.forEach(i=>{
+    const rule=findConfiguredRuleForTripItem(i);
+    i.qtyRule=rule.qtyRule;
+    i.baseQty=rule.baseQty;
+    i.qty=qtyFor(rule.qtyRule,rule.baseQty,t.days);
+  });
+}
 
 function renderTrips(){
   const list=document.getElementById("tripList");
@@ -950,7 +1068,7 @@ function renderTrips(){
       <div><div class="trip-title">${esc(t.name)}</div><div class="muted">${esc(t.destination||"Sem destino")} · ${t.days} dia(s)</div></div>
       <div class="trip-meta"><span class="pill">${labelFor("purpose",t.purpose)}</span><span class="pill">${labelFor("transport",t.transport)}</span><span class="pill">${labelFor("bag",t.bag)}</span></div>
       <div><div class="inline"><span class="muted">${done}/${t.items.length} itens</span><span class="right muted">${pct}%</span></div><div class="progress"><div style="width:${pct}%"></div></div></div>
-      <div class="actions"><button class="btn small primary" onclick="openTrip('${t.id}')">Abrir</button><button class="btn small" onclick="duplicateTrip('${t.id}')">Duplicar</button><button class="btn small danger" onclick="deleteTrip('${t.id}')">Eliminar</button></div>
+      <div class="actions"><button class="btn small primary" onclick="openTrip('${t.id}')">Abrir</button><button class="btn small" onclick="editTrip('${t.id}')">Editar</button><button class="btn small" onclick="duplicateTrip('${t.id}')">Duplicar</button><button class="btn small danger" onclick="deleteTrip('${t.id}')">Eliminar</button></div>
     </div>`
   }).join("");
 }
@@ -1014,7 +1132,7 @@ function renderTripDetail(t){
   document.getElementById("tripDetail").innerHTML=`
     <div class="topbar">
       <div><button class="btn ghost" onclick="navigate('trips')">← Viagens</button><div class="kicker">Checklist</div><h1>${esc(t.name)}</h1><div class="muted">${esc(t.destination||"Sem destino")} · ${t.days} dia(s)</div></div>
-      <div class="actions"><button class="btn" onclick="duplicateTrip('${t.id}')">Duplicar</button><button class="btn danger" onclick="deleteTrip('${t.id}')">Eliminar</button></div>
+      <div class="actions"><button class="btn" onclick="editTrip('${t.id}')">Editar</button><button class="btn" onclick="duplicateTrip('${t.id}')">Duplicar</button><button class="btn danger" onclick="deleteTrip('${t.id}')">Eliminar</button></div>
     </div>
     <div class="grid grid-4">
       <div class="card"><div class="muted">Finalidade</div><div class="stat" style="font-size:18px">${labelFor("purpose",t.purpose)}</div></div>
