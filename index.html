@@ -390,6 +390,30 @@
       .past-trips-title{margin-top:28px}
     }
 
+
+    .assignment-rule-row{
+      display:grid;
+      grid-template-columns:minmax(150px,1.25fr) minmax(110px,.75fr) minmax(130px,1fr) auto;
+      gap:8px;
+      align-items:end;
+      margin-bottom:8px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:9px;
+      background:var(--panel-2);
+    }
+    .assignment-rule-row .btn{align-self:end}
+
+    @media(max-width:700px){
+      .assignment-rule-row{
+        grid-template-columns:1fr;
+        gap:7px;
+        padding:11px;
+      }
+      .assignment-rule-row .btn{width:100%}
+      #assignmentRulesSection{margin-bottom:4px}
+    }
+
 </style>
 </head>
 <body>
@@ -495,7 +519,7 @@
             <label>Filtrar por motivo de adição</label>
             <select id="itemFilterOrigin" onchange="renderBaseItems()">
               <option value="">Todos os motivos</option>
-              <option value="Base">Base</option>
+              <option value="Base">Base</option><option value="Regra">Regra personalizada</option>
               <option value="Preset">Preset</option>
               <option value="Meteorologia">Meteorologia</option>
               <option value="Aprendido">Aprendido</option>
@@ -591,7 +615,35 @@
           <div class="weather-note" id="baseQtyExample">Ex.: quantidade base 1 → leva sempre 1 unidade.</div>
         </div>
       </div>
-      <div class="actions" style="margin-top:16px"><button class="btn primary">Guardar item</button></div>
+
+      <div class="divider"></div>
+      <h3 style="font-size:15px;margin-bottom:10px">Regra de atribuição</h3>
+      <div class="field">
+        <label>Quando deve este item ser adicionado à checklist?</label>
+        <select id="baseItemAssignmentMode" onchange="toggleAssignmentRules()">
+          <option value="always">Sempre adicionar</option>
+          <option value="conditional">Adicionar apenas quando se verificarem condições</option>
+        </select>
+      </div>
+
+      <div id="assignmentRulesSection" class="hidden" style="margin-top:12px">
+        <div class="grid grid-2" style="margin-bottom:10px">
+          <div class="field">
+            <label>Combinação das condições</label>
+            <select id="baseItemAssignmentMatch">
+              <option value="all">Todas as condições têm de se verificar</option>
+              <option value="any">Basta uma condição verificar-se</option>
+            </select>
+          </div>
+        </div>
+        <div id="assignmentRules"></div>
+        <button type="button" class="btn small" onclick="addAssignmentRuleRow()">＋ Adicionar condição</button>
+        <div class="weather-note" style="margin-top:8px">
+          Ex.: “Temperatura mínima ≤ 8 °C” ou “Chuva = Sim”. Podes combinar várias condições.
+        </div>
+      </div>
+
+      <div class="actions modal-save-actions" style="margin-top:16px"><button class="btn primary">Guardar item</button></div>
     </form>
   </div>
 </div>
@@ -604,18 +656,18 @@ function categories(){ return db?.categories?.length ? db.categories : DEFAULT_C
 let db;
 
 const DEFAULT_WEATHER_CATALOG=[
-  {id:uid(),name:"Casaco quente",category:"Roupa",qtyRule:"fixed",baseQty:1,condition:"cold"},
-  {id:uid(),name:"Camisola quente",category:"Roupa",qtyRule:"per2Days",baseQty:1,condition:"cold"},
-  {id:uid(),name:"Casaco leve",category:"Roupa",qtyRule:"fixed",baseQty:1,condition:"cool"},
-  {id:uid(),name:"Roupa leve",category:"Roupa",qtyRule:"per2Days",baseQty:1,condition:"hot"},
-  {id:uid(),name:"Protetor solar",category:"Higiene",qtyRule:"fixed",baseQty:1,condition:"hot"},
-  {id:uid(),name:"Guarda-chuva",category:"Viagem",qtyRule:"fixed",baseQty:1,condition:"rain"},
-  {id:uid(),name:"Casaco impermeável",category:"Roupa",qtyRule:"fixed",baseQty:1,condition:"rain"},
-  {id:uid(),name:"Corta-vento",category:"Roupa",qtyRule:"fixed",baseQty:1,condition:"wind"},
-  {id:uid(),name:"Luvas",category:"Roupa",qtyRule:"fixed",baseQty:1,condition:"snow"},
-  {id:uid(),name:"Gorro",category:"Roupa",qtyRule:"fixed",baseQty:1,condition:"snow"},
-  {id:uid(),name:"Calçado impermeável",category:"Calçado",qtyRule:"fixed",baseQty:1,condition:"snow"},
-  {id:uid(),name:"Roupa para usar por camadas",category:"Roupa",qtyRule:"per2Days",baseQty:1,condition:"layers"}
+  {id:uid(),name:"Casaco quente",category:"Roupa",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"tempMin",op:"lte",value:8}]}},
+  {id:uid(),name:"Camisola quente",category:"Roupa",qtyRule:"per2Days",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"tempMin",op:"lte",value:8}]}},
+  {id:uid(),name:"Casaco leve",category:"Roupa",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"tempMin",op:"gt",value:8},{field:"tempMin",op:"lte",value:14}]}},
+  {id:uid(),name:"Roupa leve",category:"Roupa",qtyRule:"per2Days",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"tempMax",op:"gte",value:26}]}},
+  {id:uid(),name:"Protetor solar",category:"Higiene",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"tempMax",op:"gte",value:26}]}},
+  {id:uid(),name:"Guarda-chuva",category:"Viagem",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"rain",op:"eq",value:"sim"}]}},
+  {id:uid(),name:"Casaco impermeável",category:"Roupa",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"rain",op:"eq",value:"sim"}]}},
+  {id:uid(),name:"Corta-vento",category:"Roupa",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"wind",op:"eq",value:"sim"}]}},
+  {id:uid(),name:"Luvas",category:"Roupa",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"snow",op:"eq",value:"sim"}]}},
+  {id:uid(),name:"Gorro",category:"Roupa",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"snow",op:"eq",value:"sim"}]}},
+  {id:uid(),name:"Calçado impermeável",category:"Calçado",qtyRule:"fixed",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"snow",op:"eq",value:"sim"}]}},
+  {id:uid(),name:"Roupa para usar por camadas",category:"Roupa",qtyRule:"per2Days",baseQty:1,assignment:{mode:"conditional",match:"all",rules:[{field:"tempRange",op:"gte",value:12}]}}
 ];
 
 const defaults={
@@ -655,7 +707,7 @@ const defaults={
 };
 
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
-function item(name,category,qtyRule="fixed",baseQty=1){return {id:uid(),name,category,qtyRule,baseQty}}
+function item(name,category,qtyRule="fixed",baseQty=1){return {id:uid(),name,category,qtyRule,baseQty,assignment:{mode:"always",match:"all",rules:[]}}}
 function load(){
   let raw=localStorage.getItem(DBKEY);
   if(!raw){
@@ -665,6 +717,15 @@ function load(){
   db=raw?JSON.parse(raw):structuredClone(defaults);
   if(!Array.isArray(db.categories)||!db.categories.length) db.categories=[...DEFAULT_CATEGORIES];
   if(!Array.isArray(db.weatherCatalog)) db.weatherCatalog=structuredClone(DEFAULT_WEATHER_CATALOG);
+
+  // Migração de versões anteriores: converte as condições meteorológicas rígidas
+  // para regras de atribuição editáveis.
+  (db.weatherCatalog||[]).forEach(i=>{
+    if(!i.assignment) i.assignment=legacyWeatherAssignment(i.condition);
+  });
+  db.baseItems.forEach(i=>{ if(!i.assignment) i.assignment={mode:"always",match:"all",rules:[]}; });
+  db.presets.forEach(p=>p.items.forEach(i=>{ if(!i.assignment) i.assignment={mode:"always",match:"all",rules:[]}; }));
+  db.learned.forEach(i=>{ if(!i.assignment) i.assignment={mode:"always",match:"all",rules:[]}; });
   save();
 }
 function save(){localStorage.setItem(DBKEY,JSON.stringify(db))}
@@ -690,29 +751,105 @@ function qtyFor(rule,base,days){
   return base;
 }
 
+
+function legacyWeatherAssignment(condition){
+  const map={
+    cold:{mode:"conditional",match:"all",rules:[{field:"tempMin",op:"lte",value:8}]},
+    cool:{mode:"conditional",match:"all",rules:[{field:"tempMin",op:"gt",value:8},{field:"tempMin",op:"lte",value:14}]},
+    hot:{mode:"conditional",match:"all",rules:[{field:"tempMax",op:"gte",value:26}]},
+    rain:{mode:"conditional",match:"all",rules:[{field:"rain",op:"eq",value:"sim"}]},
+    wind:{mode:"conditional",match:"all",rules:[{field:"wind",op:"eq",value:"sim"}]},
+    snow:{mode:"conditional",match:"all",rules:[{field:"snow",op:"eq",value:"sim"}]},
+    layers:{mode:"conditional",match:"all",rules:[{field:"tempRange",op:"gte",value:12}]}
+  };
+  return structuredClone(map[condition]||{mode:"always",match:"all",rules:[]});
+}
+
+function assignmentFor(i){
+  return i?.assignment || (i?.condition ? legacyWeatherAssignment(i.condition) : {mode:"always",match:"all",rules:[]});
+}
+
+function tripFieldValue(t,field){
+  if(field==="tempRange") return Number(t.tempMax)-Number(t.tempMin);
+  if(field==="days") return Number(t.days);
+  if(field==="tempMin"||field==="tempMax") return Number(t[field]);
+  return t[field];
+}
+
+function evaluateAssignmentRule(rule,t){
+  const actual=tripFieldValue(t,rule.field);
+  const expected=rule.value;
+  switch(rule.op){
+    case "eq": return String(actual)===String(expected);
+    case "neq": return String(actual)!==String(expected);
+    case "lte": return Number(actual)<=Number(expected);
+    case "lt": return Number(actual)<Number(expected);
+    case "gte": return Number(actual)>=Number(expected);
+    case "gt": return Number(actual)>Number(expected);
+    default: return true;
+  }
+}
+
+function itemApplies(i,t){
+  const a=assignmentFor(i);
+  if(!a || a.mode!=="conditional" || !Array.isArray(a.rules) || !a.rules.length) return true;
+  const results=a.rules.map(r=>evaluateAssignmentRule(r,t));
+  return a.match==="any" ? results.some(Boolean) : results.every(Boolean);
+}
+
+function ruleFieldLabel(field){
+  return {
+    purpose:"Finalidade",
+    transport:"Transporte",
+    lodging:"Alojamento",
+    bag:"Bagagem",
+    tempMin:"Temperatura mínima",
+    tempMax:"Temperatura máxima",
+    tempRange:"Amplitude térmica",
+    rain:"Chuva",
+    wind:"Vento forte",
+    snow:"Neve",
+    days:"Duração"
+  }[field]||field;
+}
+
+function ruleOperatorLabel(op){
+  return {eq:"=",neq:"≠",lte:"≤",lt:"<",gte:"≥",gt:">"}[op]||op;
+}
+
+function ruleValueLabel(rule){
+  if(["purpose","transport","lodging","bag"].includes(rule.field)){
+    const typeMap={purpose:"purpose",transport:"transport",lodging:"lodging",bag:"bag"};
+    return labelFor(typeMap[rule.field],rule.value);
+  }
+  if(["rain","wind","snow"].includes(rule.field)) return rule.value==="sim"?"Sim":"Não";
+  if(["tempMin","tempMax","tempRange"].includes(rule.field)) return `${rule.value} °C`;
+  if(rule.field==="days") return `${rule.value} dia(s)`;
+  return String(rule.value);
+}
+
+function assignmentSummary(i){
+  const a=assignmentFor(i);
+  if(!a || a.mode!=="conditional" || !a.rules?.length) return "Sempre";
+  const sep=a.match==="any" ? " OU " : " E ";
+  return a.rules.map(r=>`${ruleFieldLabel(r.field)} ${ruleOperatorLabel(r.op)} ${ruleValueLabel(r)}`).join(sep);
+}
+
 function matches(p,t){
   const m=p.match||{};
   return (!m.purpose||m.purpose===t.purpose)&&(!m.transport||m.transport===t.transport)&&(!m.lodging||m.lodging===t.lodging)&&(!m.bag||m.bag===t.bag);
 }
 
 function weatherItems(t){
-  const active=new Set();
-  if(Number(t.tempMin)<=8) active.add("cold");
-  else if(Number(t.tempMin)<=14) active.add("cool");
-  if(Number(t.tempMax)>=26) active.add("hot");
-  if(t.rain==="sim") active.add("rain");
-  if(t.wind==="sim") active.add("wind");
-  if(t.snow==="sim") active.add("snow");
-  if((Number(t.tempMax)-Number(t.tempMin))>=12) active.add("layers");
-
   return (db.weatherCatalog||[])
-    .filter(i=>active.has(i.condition))
+    .filter(i=>itemApplies(i,t))
     .map(i=>({...i,source:"Meteorologia"}));
 }
 
 function learnedSuggestions(t){
   const counts={};
   for(const l of db.learned){
+    if(!itemApplies(l,t)) continue;
     let score=0;
     if(l.context.purpose===t.purpose)score++;
     if(l.context.transport===t.transport)score++;
@@ -729,8 +866,8 @@ function learnedSuggestions(t){
 
 function generateChecklist(t){
   let raw=[];
-  db.baseItems.forEach(i=>raw.push({...i,source:"Base"}));
-  db.presets.filter(p=>matches(p,t)).forEach(p=>p.items.forEach(i=>raw.push({...i,source:"Preset: "+p.name})));
+  db.baseItems.filter(i=>itemApplies(i,t)).forEach(i=>raw.push({...i,source:"Base"}));
+  db.presets.filter(p=>matches(p,t)).forEach(p=>p.items.filter(i=>itemApplies(i,t)).forEach(i=>raw.push({...i,source:"Preset: "+p.name})));
   raw.push(...weatherItems(t),...learnedSuggestions(t));
 
   const merged=new Map();
@@ -739,7 +876,7 @@ function generateChecklist(t){
     const q=qtyFor(i.qtyRule||"fixed",i.baseQty||1,t.days);
     if(!merged.has(key)) merged.set(key,{
       id:uid(),name:i.name,category:i.category,qty:q,checked:false,source:i.source||"Base",
-      baseQty:Number(i.baseQty)||1,qtyRule:i.qtyRule||"fixed"
+      baseQty:Number(i.baseQty)||1,qtyRule:i.qtyRule||"fixed",assignment:structuredClone(assignmentFor(i))
     });
     else{
       const ex=merged.get(key);
@@ -1148,19 +1285,22 @@ function getAllKnownItems(){
   const rows=[];
 
   db.baseItems.forEach(i=>rows.push({
-    id:i.id,name:i.name,category:i.category,origin:"Base",
-    detail:"Item base",baseQty:i.baseQty,qtyRule:i.qtyRule,editable:"base"
+    id:i.id,name:i.name,category:i.category,
+    origin:assignmentFor(i).mode==="conditional"?"Regra":"Base",
+    detail:`Atribuição: ${assignmentSummary(i)}`,baseQty:i.baseQty,qtyRule:i.qtyRule,editable:"base",
+    assignment:assignmentFor(i)
   }));
 
   db.presets.forEach(p=>p.items.forEach(i=>rows.push({
     id:i.id,name:i.name,category:i.category,origin:"Preset",
-    detail:`Preset: ${p.name}`,baseQty:i.baseQty,qtyRule:i.qtyRule,editable:"preset",presetId:p.id
+    detail:`Preset: ${p.name} · ${assignmentSummary(i)}`,baseQty:i.baseQty,qtyRule:i.qtyRule,editable:"preset",presetId:p.id,
+    assignment:assignmentFor(i)
   })));
 
   (db.weatherCatalog||[]).forEach(i=>rows.push({
     id:i.id,name:i.name,category:i.category,origin:"Meteorologia",
-    detail:`Regra: ${weatherConditionLabel(i.condition)}`,baseQty:i.baseQty,qtyRule:i.qtyRule,
-    editable:"weather",condition:i.condition
+    detail:`Atribuição: ${assignmentSummary(i)}`,baseQty:i.baseQty,qtyRule:i.qtyRule,
+    editable:"weather",assignment:assignmentFor(i)
   }));
 
   const learnedMap=new Map();
@@ -1168,7 +1308,7 @@ function getAllKnownItems(){
     const key=(l.name+"|"+l.category).toLowerCase();
     if(!learnedMap.has(key)) learnedMap.set(key,{
       id:key,name:l.name,category:l.category,origin:"Aprendido",
-      detail:"Aprendido a partir de viagens anteriores",baseQty:1,qtyRule:"fixed",editable:"learned"
+      detail:`Aprendido · ${assignmentSummary(l)}`,baseQty:1,qtyRule:"fixed",editable:"learned",assignment:assignmentFor(l)
     });
   });
   rows.push(...learnedMap.values());
@@ -1247,6 +1387,116 @@ function ruleLabel(r){return {
   per3Days:"Por cada 3 dias",
   daysPlusOne:"Dias + quantidade base"
 }[r]||r}
+
+const ASSIGNMENT_FIELDS=[
+  ["purpose","Finalidade"],
+  ["transport","Transporte"],
+  ["lodging","Alojamento"],
+  ["bag","Bagagem"],
+  ["tempMin","Temperatura mínima"],
+  ["tempMax","Temperatura máxima"],
+  ["tempRange","Amplitude térmica"],
+  ["rain","Chuva"],
+  ["wind","Vento forte"],
+  ["snow","Neve"],
+  ["days","Duração da viagem"]
+];
+
+function toggleAssignmentRules(){
+  const conditional=$("baseItemAssignmentMode").value==="conditional";
+  $("assignmentRulesSection").classList.toggle("hidden",!conditional);
+  if(conditional && !$("assignmentRules").children.length) addAssignmentRuleRow();
+}
+
+function assignmentFieldOptions(selected){
+  return ASSIGNMENT_FIELDS.map(([v,l])=>`<option value="${v}" ${selected===v?"selected":""}>${l}</option>`).join("");
+}
+
+function assignmentOperatorOptions(field,selected){
+  const numeric=["tempMin","tempMax","tempRange","days"].includes(field);
+  const ops=numeric
+    ? [["lte","≤"],["gte","≥"],["lt","<"],["gt",">"],["eq","="],["neq","≠"]]
+    : [["eq","="],["neq","≠"]];
+  return ops.map(([v,l])=>`<option value="${v}" ${selected===v?"selected":""}>${l}</option>`).join("");
+}
+
+function assignmentValueControl(field,value){
+  const val=value ?? "";
+  if(field==="purpose"){
+    const opts=[["lazer","Lazer"],["trabalho","Trabalho"],["praia","Praia"],["neve","Neve"],["aventura","Aventura"],["cidade","Cidade"],["evento","Evento"]];
+    return `<select class="ar-value">${opts.map(([v,l])=>`<option value="${v}" ${String(val)===v?"selected":""}>${l}</option>`).join("")}</select>`;
+  }
+  if(field==="transport"){
+    const opts=[["aviao","Avião"],["carro","Carro"],["comboio","Comboio"],["outro","Outro"]];
+    return `<select class="ar-value">${opts.map(([v,l])=>`<option value="${v}" ${String(val)===v?"selected":""}>${l}</option>`).join("")}</select>`;
+  }
+  if(field==="lodging"){
+    const opts=[["hotel","Hotel"],["apartamento","Apartamento"],["familia","Casa de familiares"],["campismo","Campismo"]];
+    return `<select class="ar-value">${opts.map(([v,l])=>`<option value="${v}" ${String(val)===v?"selected":""}>${l}</option>`).join("")}</select>`;
+  }
+  if(field==="bag"){
+    const opts=[["mochila","Mochila"],["cabine","Mala de cabine"],["porao","Mala de porão"]];
+    return `<select class="ar-value">${opts.map(([v,l])=>`<option value="${v}" ${String(val)===v?"selected":""}>${l}</option>`).join("")}</select>`;
+  }
+  if(["rain","wind","snow"].includes(field)){
+    return `<select class="ar-value"><option value="sim" ${String(val)==="sim"?"selected":""}>Sim</option><option value="nao" ${String(val)==="nao"?"selected":""}>Não</option></select>`;
+  }
+  return `<input class="ar-value" type="number" step="1" value="${esc(val)}" placeholder="${field==="days"?"n.º de dias":"°C"}">`;
+}
+
+function addAssignmentRuleRow(data={}){
+  const field=data.field||"tempMin";
+  const row=document.createElement("div");
+  row.className="assignment-rule-row";
+  row.innerHTML=`
+    <div class="field">
+      <label>Propriedade</label>
+      <select class="ar-field">${assignmentFieldOptions(field)}</select>
+    </div>
+    <div class="field">
+      <label>Operador</label>
+      <select class="ar-op">${assignmentOperatorOptions(field,data.op||(["tempMin","tempMax","tempRange","days"].includes(field)?"lte":"eq"))}</select>
+    </div>
+    <div class="field ar-value-wrap">
+      <label>Valor</label>
+      ${assignmentValueControl(field,data.value)}
+    </div>
+    <button type="button" class="btn small danger" onclick="this.parentElement.remove()">Remover</button>
+  `;
+  const fieldEl=row.querySelector(".ar-field");
+  fieldEl.addEventListener("change",()=>{
+    const f=fieldEl.value;
+    const opEl=row.querySelector(".ar-op");
+    opEl.innerHTML=assignmentOperatorOptions(f,["tempMin","tempMax","tempRange","days"].includes(f)?"lte":"eq");
+    const wrap=row.querySelector(".ar-value-wrap");
+    wrap.innerHTML=`<label>Valor</label>${assignmentValueControl(f,"")}`;
+  });
+  $("assignmentRules").appendChild(row);
+}
+
+function setAssignmentEditor(assignment){
+  const a=assignment||{mode:"always",match:"all",rules:[]};
+  $("baseItemAssignmentMode").value=a.mode==="conditional"?"conditional":"always";
+  $("baseItemAssignmentMatch").value=a.match==="any"?"any":"all";
+  $("assignmentRules").innerHTML="";
+  (a.rules||[]).forEach(addAssignmentRuleRow);
+  toggleAssignmentRules();
+}
+
+function readAssignmentEditor(){
+  if($("baseItemAssignmentMode").value!=="conditional"){
+    return {mode:"always",match:"all",rules:[]};
+  }
+  const rules=[...$("assignmentRules").querySelectorAll(".assignment-rule-row")].map(row=>{
+    const field=row.querySelector(".ar-field").value;
+    const op=row.querySelector(".ar-op").value;
+    const raw=row.querySelector(".ar-value").value;
+    const value=["tempMin","tempMax","tempRange","days"].includes(field)?Number(raw):raw;
+    return {field,op,value};
+  }).filter(r=>r.value!=="" && !(typeof r.value==="number" && Number.isNaN(r.value)));
+  return {mode:"conditional",match:$("baseItemAssignmentMatch").value||"all",rules};
+}
+
 function openBaseItemModal(){
   const form=$("baseItemForm");
   if(!form) return;
@@ -1257,6 +1507,7 @@ function openBaseItemModal(){
   $("baseItemTitle").textContent="Novo item";
   refreshCategorySelects();
   $("baseQtyExample").style.display="";
+  setAssignmentEditor({mode:"always",match:"all",rules:[]});
   $("baseItemModal").classList.add("open");
   updateQtyExample();
 }
@@ -1293,6 +1544,7 @@ function editCatalogItem(context,id,parentId=""){
   $("baseItemCategory").value=i.category;
   $("baseItemBaseQty").value=i.baseQty||1;
   $("baseItemQtyRule").value=i.qtyRule||"fixed";
+  setAssignmentEditor(assignmentFor(i));
   $("baseItemTitle").textContent="Editar item";
   $("baseItemModal").classList.add("open");
   updateQtyExample();
@@ -1308,7 +1560,8 @@ document.getElementById("baseItemForm").addEventListener("submit",e=>{
     name:$("baseItemName").value.trim(),
     category:$("baseItemCategory").value,
     baseQty:Number($("baseItemBaseQty").value)||1,
-    qtyRule:$("baseItemQtyRule").value
+    qtyRule:$("baseItemQtyRule").value,
+    assignment:readAssignmentEditor()
   };
 
   if(!updated.name)return;
@@ -1328,20 +1581,26 @@ document.getElementById("baseItemForm").addEventListener("submit",e=>{
   } else if(context==="learned"){
     db.learned.forEach(i=>{
       if((i.name+"|"+i.category).toLowerCase()===oldId){
-        i.name=updated.name;i.category=updated.category;
+        i.name=updated.name;i.category=updated.category;i.assignment=structuredClone(updated.assignment);
       }
     });
   } else if(context==="manual"){
     db.trips.forEach(t=>t.items.forEach(i=>{
       if(i.source==="Adicionado manualmente" && (i.name+"|"+i.category).toLowerCase()===oldId){
         i.name=updated.name;i.category=updated.category;i.qty=updated.baseQty;
+        i.qtyRule=updated.qtyRule;i.baseQty=updated.baseQty;i.assignment=structuredClone(updated.assignment);
       }
     }));
     db.learned.forEach(i=>{
       if((i.name+"|"+i.category).toLowerCase()===oldId){
-        i.name=updated.name;i.category=updated.category;
+        i.name=updated.name;i.category=updated.category;i.assignment=structuredClone(updated.assignment);
       }
     });
+    if(updated.assignment.mode==="conditional"){
+      const existing=db.baseItems.find(i=>i.name.toLowerCase()===updated.name.toLowerCase() && i.category===updated.category);
+      if(existing) Object.assign(existing,updated);
+      else db.baseItems.push({id:uid(),...updated});
+    }
   }
 
   save();
@@ -1468,7 +1727,7 @@ function exportData(){
 }
 function importData(){
   const f=importFile.files[0];if(!f)return alert("Seleciona um ficheiro JSON.");
-  const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.trips||!x.presets||!x.baseItems)throw 0;if(!x.categories)x.categories=[...DEFAULT_CATEGORIES];if(!x.weatherCatalog)x.weatherCatalog=structuredClone(DEFAULT_WEATHER_CATALOG);db=x;save();alert("Dados importados.");navigate("trips")}catch{alert("Ficheiro inválido.")}};r.readAsText(f)
+  const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.trips||!x.presets||!x.baseItems)throw 0;if(!x.categories)x.categories=[...DEFAULT_CATEGORIES];if(!x.weatherCatalog)x.weatherCatalog=structuredClone(DEFAULT_WEATHER_CATALOG);db=x;(db.weatherCatalog||[]).forEach(i=>{if(!i.assignment)i.assignment=legacyWeatherAssignment(i.condition)});db.baseItems.forEach(i=>{if(!i.assignment)i.assignment={mode:"always",match:"all",rules:[]}});db.presets.forEach(p=>p.items.forEach(i=>{if(!i.assignment)i.assignment={mode:"always",match:"all",rules:[]}}));save();alert("Dados importados.");navigate("trips")}catch{alert("Ficheiro inválido.")}};r.readAsText(f)
 }
 function factoryReset(){if(!confirm("Isto irá apagar todas as viagens e configurações. Continuar?"))return;localStorage.removeItem(DBKEY);load();navigate("trips")}
 
