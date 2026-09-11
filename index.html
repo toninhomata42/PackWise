@@ -2,15 +2,8 @@
 <html lang="pt-PT">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Packwise — Planeador de Bagagem</title>
-  <meta name="theme-color" content="#f7f7f5">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Packwise">
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-
   <style>
     :root{
       --bg:#f7f7f5;
@@ -252,6 +245,326 @@
       #page-items .table td:nth-child(5)::before{content:"Quantidade · ";color:var(--muted)}
       #page-items .table td.actions{display:flex;padding-top:8px}
       .item-filters{padding:12px}
+    }
+
+
+    /* --- Mobile UX refinement --- */
+    :root{
+      --mobile-nav-height:88px;
+    }
+
+    html{
+      -webkit-text-size-adjust:100%;
+      text-size-adjust:100%;
+      touch-action:manipulation;
+    }
+
+    body{
+      font-size:15px;
+      line-height:1.45;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    h1{font-size:30px;line-height:1.15;font-weight:760}
+    h2{font-size:20px;line-height:1.25;font-weight:730}
+    h3{font-size:16px;line-height:1.3;font-weight:700}
+    label{font-size:13px;line-height:1.3}
+    .muted{font-size:14px;line-height:1.45}
+    .pill{font-size:12px;line-height:1.2}
+    .btn{font-size:14px;line-height:1.2}
+    input,select,textarea{font-size:15px}
+
+    @media(max-width:700px){
+      html,body{
+        width:100%;
+        max-width:100%;
+        overflow-x:hidden;
+      }
+
+      body{
+        font-size:16px;
+        padding-bottom:calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+      }
+
+      .app{display:block;min-height:100dvh}
+
+      main{
+        width:100%;
+        max-width:none;
+        padding:18px 16px 28px;
+      }
+
+      .page{
+        width:100%;
+        max-width:100%;
+      }
+
+      h1{
+        font-size:27px;
+        line-height:1.15;
+        margin-bottom:6px;
+      }
+
+      h2{
+        font-size:20px;
+        line-height:1.2;
+      }
+
+      h3{
+        font-size:17px;
+        line-height:1.25;
+      }
+
+      p,.muted{
+        font-size:15px;
+        line-height:1.45;
+      }
+
+      label{
+        font-size:14px;
+        line-height:1.3;
+      }
+
+      .kicker{
+        font-size:11px;
+        line-height:1.2;
+      }
+
+      .pill{
+        font-size:13px;
+        padding:6px 9px;
+      }
+
+      input,select,textarea{
+        min-height:48px;
+        font-size:16px;
+        line-height:1.25;
+        padding:11px 12px;
+        border-radius:11px;
+      }
+
+      textarea{min-height:104px}
+
+      .btn{
+        min-height:46px;
+        padding:11px 14px;
+        border-radius:11px;
+        font-size:15px;
+        font-weight:680;
+      }
+
+      .btn.small{
+        min-height:40px;
+        padding:9px 11px;
+        font-size:14px;
+      }
+
+      .topbar{
+        display:flex;
+        align-items:flex-start;
+        gap:12px;
+        margin-bottom:20px;
+      }
+
+      .topbar>div:first-child{
+        min-width:0;
+        flex:1;
+      }
+
+      .topbar>.btn,
+      .topbar>.actions{
+        flex:0 0 auto;
+      }
+
+      .card{
+        padding:16px;
+        border-radius:15px;
+      }
+
+      .section-title{
+        margin:24px 0 12px;
+      }
+
+      .section-title h2{
+        margin:0;
+      }
+
+      .trip-title{
+        font-size:18px;
+        line-height:1.25;
+      }
+
+      /* Larger, clearer bottom navigation */
+      .sidebar{
+        position:fixed;
+        z-index:100;
+        left:0;
+        right:0;
+        bottom:0;
+        top:auto;
+        height:calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+        padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+        border:0;
+        border-top:1px solid var(--border);
+        background:rgba(247,247,245,.98);
+        backdrop-filter:blur(18px);
+        -webkit-backdrop-filter:blur(18px);
+        box-shadow:0 -8px 24px rgba(0,0,0,.05);
+      }
+
+      .brand,.sidebar-foot{display:none}
+
+      .nav{
+        height:72px;
+        display:grid;
+        grid-template-columns:repeat(6,minmax(0,1fr));
+        gap:4px;
+        overflow:visible;
+      }
+
+      .nav button{
+        min-width:0;
+        min-height:68px;
+        padding:7px 2px 6px;
+        border-radius:12px;
+        justify-content:center;
+        align-items:center;
+        flex-direction:column;
+        gap:5px;
+        font-size:12px;
+        line-height:1.05;
+        font-weight:650;
+        white-space:normal;
+        text-align:center;
+      }
+
+      .nav button.active{
+        background:#e3e3df;
+      }
+
+      .nav button:hover{
+        background:#e8e8e5;
+      }
+
+      /* Checklist focused on thumb use */
+      .checklist-cat{
+        padding:14px 15px;
+        margin-bottom:14px;
+        transition:opacity .18s ease, transform .18s ease;
+      }
+
+      .checklist-cat.category-complete{
+        opacity:.72;
+        background:#fafaf8;
+      }
+
+      .checklist-header{
+        margin-bottom:4px;
+        min-height:36px;
+      }
+
+      .checklist-header h3{
+        font-size:18px;
+        margin:0;
+      }
+
+      .check-row{
+        grid-template-columns:40px minmax(0,1fr) 64px;
+        gap:10px;
+        padding:13px 0;
+        min-height:64px;
+        align-items:center;
+      }
+
+      .check-row input[type=checkbox]{
+        width:26px;
+        height:26px;
+        margin:0;
+      }
+
+      .check-row .item-name{
+        font-size:16px;
+        line-height:1.35;
+        font-weight:560;
+      }
+
+      .check-row.done .item-name{
+        color:#8b8a87;
+      }
+
+      .check-row .qty{
+        width:64px;
+        height:44px;
+        min-height:44px;
+        padding:8px 6px;
+        font-size:16px;
+        text-align:center;
+      }
+
+      .check-row .source,.check-row .remove-btn{
+        display:none;
+      }
+
+      .progress{height:10px}
+
+      #tripStats{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+        gap:10px;
+      }
+
+      #tripStats .card{padding:14px}
+      #tripStats .muted{font-size:13px}
+      #tripStats .stat{font-size:24px}
+
+      .trip-meta{gap:6px}
+
+      .actions{
+        gap:8px;
+      }
+
+      .actions .btn{
+        flex:1 1 auto;
+      }
+
+      .modal-backdrop{
+        align-items:flex-end;
+        padding:0;
+      }
+
+      .modal{
+        width:100%;
+        max-width:100%;
+        max-height:92dvh;
+        border-radius:20px 20px 0 0;
+        padding:20px 16px calc(22px + env(safe-area-inset-bottom));
+      }
+
+      .modal-head h2{
+        font-size:22px;
+      }
+
+      .icon-btn{
+        min-width:44px;
+        min-height:44px;
+        font-size:28px;
+      }
+
+      .tagline{
+        font-size:14px;
+        line-height:1.45;
+        padding:11px 12px;
+      }
+
+      .weather-note,.source{
+        font-size:12px;
+      }
+    }
+
+    @media(max-width:390px){
+      main{padding-left:13px;padding-right:13px}
+      .nav button{font-size:11px}
+      .nav{gap:2px}
+      .sidebar{padding-left:5px;padding-right:5px}
     }
 
 </style>
@@ -660,17 +973,40 @@ function openTrip(id){
 }
 
 function renderTripDetail(t){
-  const cats=categories().map(cat=>{
-    const its=t.items.filter(i=>i.category===cat);
-    if(!its.length)return "";
-    return `<div class="card checklist-cat"><div class="checklist-header"><h3>${cat}</h3><span class="pill">${its.filter(i=>i.checked).length}/${its.length}</span></div>
-    ${its.map(i=>`<div class="check-row ${i.checked?"done":""}">
-      <input type="checkbox" ${i.checked?"checked":""} onchange="toggleItem('${t.id}','${i.id}',this.checked)">
-      <div><div class="item-name">${esc(i.name)}</div><div class="source">${esc(i.source||"")}</div></div>
-      <input class="qty" type="number" min="1" value="${i.qty}" onchange="changeQty('${t.id}','${i.id}',this.value)">
-      <span class="source">${esc(i.source||"")}</span>
-      <button class="btn small danger remove-btn" onclick="removeTripItem('${t.id}','${i.id}')">Remover</button>
-    </div>`).join("")}</div>`
+  const orderedCategories=categories()
+    .map((cat,index)=>{
+      const items=t.items.filter(i=>i.category===cat);
+      const complete=items.length>0 && items.every(i=>i.checked);
+      return {cat,index,items,complete};
+    })
+    .filter(x=>x.items.length)
+    .sort((a,b)=>{
+      if(a.complete!==b.complete) return a.complete?1:-1;
+      return a.index-b.index;
+    });
+
+  const cats=orderedCategories.map(group=>{
+    const its=[...group.items].sort((a,b)=>{
+      if(a.checked!==b.checked) return a.checked?1:-1;
+      return 0;
+    });
+
+    return `<div class="card checklist-cat ${group.complete?"category-complete":""}">
+      <div class="checklist-header">
+        <h3>${group.cat}</h3>
+        <span class="pill">${its.filter(i=>i.checked).length}/${its.length}</span>
+      </div>
+      ${its.map(i=>`<div class="check-row ${i.checked?"done":""}">
+        <input aria-label="Marcar ${esc(i.name)} como preparado" type="checkbox" ${i.checked?"checked":""} onchange="toggleItem('${t.id}','${i.id}',this.checked)">
+        <div>
+          <div class="item-name">${esc(i.name)}</div>
+          <div class="source">${esc(i.source||"")}</div>
+        </div>
+        <input aria-label="Quantidade de ${esc(i.name)}" class="qty" type="number" min="1" inputmode="numeric" value="${i.qty}" onchange="changeQty('${t.id}','${i.id}',this.value)">
+        <span class="source">${esc(i.source||"")}</span>
+        <button class="btn small danger remove-btn" onclick="removeTripItem('${t.id}','${i.id}')">Remover</button>
+      </div>`).join("")}
+    </div>`;
   }).join("");
 
   const done=t.items.filter(i=>i.checked).length,pct=t.items.length?Math.round(done/t.items.length*100):0;
@@ -1095,14 +1431,5 @@ document.getElementById("baseItemQtyRule")?.addEventListener("change",updateQtyE
 updateQtyExample();
 renderTrips();
 </script>
-
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(err => console.warn("Service worker:", err));
-  });
-}
-</script>
-
 </body>
 </html>
